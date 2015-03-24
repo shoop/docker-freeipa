@@ -1,5 +1,6 @@
-# Clone from the RHEL 7
-FROM rhel7
+# Clone from the RHEL 7.0
+FROM rhel7.0
+RUN echo 7.0 > /etc/yum/vars/releasever
 
 MAINTAINER Jan Pazdziora
 
