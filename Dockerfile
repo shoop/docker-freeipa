@@ -4,8 +4,6 @@ RUN echo 7.0 > /etc/yum/vars/releasever
 
 MAINTAINER Jan Pazdziora
 
-RUN yum swap -y -- remove fakesystemd -- install systemd systemd-libs && yum clean all
-
 # Install FreeIPA server
 RUN mkdir -p /run/lock ; yum install -y ipa-server bind bind-dyndb-ldap perl 'perl(Time::HiRes)' && yum clean all
 
