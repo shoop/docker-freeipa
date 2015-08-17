@@ -17,9 +17,7 @@ ADD httpd.service /etc/systemd/system/httpd.service
 ADD systemctl /usr/bin/systemctl
 ADD systemctl-socket-daemon /usr/bin/systemctl-socket-daemon
 
-ADD ipa-server-configure-first /usr/sbin/ipa-server-configure-first
-
-RUN chmod -v +x /usr/bin/systemctl /usr/bin/systemctl-socket-daemon /usr/sbin/ipa-server-configure-first
+RUN chmod -v +x /usr/bin/systemctl /usr/bin/systemctl-socket-daemon
 
 RUN groupadd -g 389 dirsrv ; useradd -u 389 -g 389 -c 'DS System User' -d '/var/lib/dirsrv' --no-create-home -s '/sbin/nologin' dirsrv
 RUN groupadd -g 17 pkiuser ; useradd -u 17 -g 17 -c 'CA System User' -d '/var/lib' --no-create-home -s '/sbin/nologin' pkiuser
@@ -36,3 +34,6 @@ EXPOSE 53/udp 53 80 443 389 636 88 464 88/udp 464/udp 123/udp 7389 9443 9444 944
 VOLUME /data
 
 ENTRYPOINT /usr/sbin/ipa-server-configure-first
+
+ADD ipa-server-configure-first /usr/sbin/ipa-server-configure-first
+RUN chmod -v +x /usr/sbin/ipa-server-configure-first
