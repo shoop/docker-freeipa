@@ -74,6 +74,16 @@ function upgrade_server () {
 	cp -f /data-template/build-id /data/build-id
 }
 
+#### Wait for network to be set up for specific requirements
+#### Needs to be done in a subshell for netns purposes
+(
+while true; do
+	grep -q '^1$' "/sys/class/net/eth1/carrier" >/dev/null 2>&1 && break
+	echo "Waiting for eth1 to be up"
+	sleep 5
+done
+)
+
 if ! [ -f /etc/ipa/ca.crt ] ; then
 	( cd /data-template && tar cf - . ) | ( cd /data && tar xf - )
 fi
@@ -170,6 +180,14 @@ else
 	DOMAIN=${HOSTNAME_FQDN#*.}
 	if [ "$HOSTNAME_SHORT.$DOMAIN" != "$HOSTNAME_FQDN" ] ; then
 		usage
+	fi
+
+	### Make sure we resolve our own address correctly
+	if [ ! -z "$IPA_SERVER_IP" ]; then
+		echo "$IPA_SERVER_IP  $HOSTNAME_FQDN $HOSTNAME_SHORT" >> /etc/hosts
+	fi
+	if [ ! -z "$IPA_MASTER_IP" ]; then
+		echo "$IPA_MASTER_IP  $IPA_MASTER_FQDN $IPA_MASTER_SHORT" >> /etc/hosts
 	fi
 
 	REALM=${DOMAIN^^}

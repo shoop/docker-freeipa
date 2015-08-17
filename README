@@ -3,6 +3,9 @@
 This repository contains the Dockerfile and associated assets for
 building a FreeIPA server Docker image from the official yum repo.
 
+### WARNING: this is a modified version that waits for an external
+###    network configuration, see below!
+
 Install docker 1.2+:
 
     yum install -y docker-io	# on Fedoras
@@ -92,6 +95,56 @@ address. Starting the server would then be
 	-p 88:88/udp -p 464:464/udp -p 123:123/udp -p 7389:7389 \
 	-p 9443:9443 -p 9444:9444 -p 9445:9445 ...
 
+### WARNING: the current installation code waits unconditionally for
+###   the network. Read on.
+
+However, the IPA_SERVER_IP option does not really work well with
+addresses that are not bound on the docker bridge. The server setup
+gets confused and adds e.g. reverse zones for the docker IP instead
+of the specified IP.
+
+A better option is to add a virtual ethernet device that is configured
+with the IP specified, which can be routed on the host so that all clients
+can reach it.
+
+Running the container this way requires the following invocation
+(from a proof of concept):
+
+    docker run --name ipa1 -d --cap-add=SYS_TIME \
+	-h ipa1.fqdn -v /var/lib/ipa-data:/data:Z \
+	-e IPA_SERVER_IP=10.12.0.98 freeipa-server:centos-7-upstream-network
+
+The process will wait until a configured eth1 device is found inside
+the netns. This can be provided by the following sequence of commands
+from the host:
+
+    mkdir -p /var/run/netns
+    IPAPID=$(/usr/bin/docker inspect --format='{{ .State.Pid }}' ipa1)
+    ln -sf /proc/${IPAPID}/ns/net /var/run/netns/ipa1
+    ip link add veth0-ipa1 type veth peer name veth1-ipa1
+    ip link set dev veth1-ipa1 netns ipa1
+    ip netns exec ipa1 ip link set veth1-ipa1 name eth1
+    ip netns exec ipa1 ip addr dev eth1 local 10.12.0.98/24 broadcast +
+    ip link set dev veth0-ipa1 up
+    ip netns exec ipa1 ip link set eth1 up
+
+For connectivity from the host to the container, simply add the veth0-ipa1
+device to a bridge with fixed IP address in the same range.
+
+To create a replica with a fixed IP, use the same process as documented
+above, but also specify the IPA master server details in additional
+docker environment variables so the correct hostname can be resolved:
+
+    docker run --name ipa2 -d --cap-add=SYS_TIME \
+	-h ipa2.fqdn -v /var/lib/ipa-data-replica:/data:Z \
+	-e IPA_SERVER_IP=10.12.0.99 \
+	-e IPA_MASTER_IP=10.12.0.98 \
+	-e IPA_MASTER_FQDN=ipa1.fqdn \
+	-e IPA_MASTER_SHORT=ipa1 \
+	freeipa-server:centos-7-upstream-network
+
+Of course, this container also needs the eth1 virtual interface setup
+analogous to above.
 
 # IPA-enrolled client in Docker
 
